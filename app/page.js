@@ -1,35 +1,68 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Heart, Send, MessageCircle, ShieldCheck, MoonStar } from "lucide-react";
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getDatabase, ref, push, onValue } from "firebase/database";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyOunwXndq21YJUa-9j7LcUqNvduOLmYo28",
+  authDomain: "feeling-zone-db.firebaseapp.com",
+  databaseURL: "https://feeling-zone-db-default-rtdb.firebaseio.com",
+  projectId: "feeling-zone-db",
+  storageBucket: "feeling-zone-db.firebasestorage.app",
+  messagingSenderId: "122868350318",
+  appId: "1:122868350318:web:386b96afa6415abae6957f",
+  measurementId: "G-15Z538FQLZ"
+};
+
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+const database = getDatabase(app);
 
 export default function FeelingZoneWebsite() {
-  const [posts, setPosts] = useState([
-    {
-      author: "Anonymous",
-      text: "හිතට දැනෙන හැඟීම් වචන වලට පෙරලන්න පුළුවන් තැනක් මේ... 🫀"
-    },
-    {
-      author: "සෙනූ",
-      text: "නිහඬ මතක අතරේ තනි වෙලා ඉන්න hිතකටත් ආදරේ ඕන... 🌙"
-    }
-  ]);
-
+  const [posts, setPosts] = useState([]);
   const [author, setAuthor] = useState("");
   const [text, setText] = useState("");
   const [anonymous, setAnonymous] = useState(false);
 
+  useEffect(() => {
+    const postsRef = ref(database, "posts");
+    onValue(postsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const list = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        })).reverse();
+        setPosts(list);
+      } else {
+        setPosts([
+          {
+            id: "default-1",
+            author: "Anonymous",
+            text: "හිතට දැනෙන හැඟීම් වචන වලට පෙරලන්න පුළුවන් තැනක් මේ... 🫀"
+          },
+          {
+            id: "default-2",
+            author: "සෙනූ",
+            text: "නිහඬ මතක අතරේ තනි වෙලා ඉන්න හිතකටත් ආදරේ ඕන... 🌙"
+          }
+        ]);
+      }
+    });
+  }, []);
+
   const submitPost = (e) => {
     e.preventDefault();
-
     if (!text) return;
 
-    const newPost = {
+    const postsRef = ref(database, "posts");
+    push(postsRef, {
       author: anonymous ? "Anonymous" : author || "Unknown",
-      text
-    };
+      text: text,
+      timestamp: Date.now()
+    });
 
-    setPosts([newPost, ...posts]);
     setAuthor("");
     setText("");
     setAnonymous(false);
@@ -140,6 +173,20 @@ export default function FeelingZoneWebsite() {
               Contact on WhatsApp 💬
             </a>
           </div>
+        </div>
+
+        <div className="space-y-6 max-w-4xl mx-auto mb-16">
+          <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
+            <span>📝 මෑතකදී පළවූ නිසදැස් ({posts.length})</span>
+          </h2>
+          {posts.map((post) => (
+            <div key={post.id} className="bg-white/5 border border-white/10 backdrop-blur-md rounded-2xl p-6 shadow-xl hover:border-pink-500/30 transition-all duration-300">
+              <p className="text-xl text-gray-100 leading-9 mb-4 whitespace-pre-wrap">{post.text}</p>
+              <div className="flex items-center justify-between text-sm text-pink-300 border-t border-white/5 pt-3">
+                <span>✍️ <b>{post.author}</b> විසින්</span>
+              </div>
+            </div>
+          ))}
         </div>
 
         <footer className="border-t border-white/10 py-10 text-center">
